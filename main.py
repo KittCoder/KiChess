@@ -1,5 +1,4 @@
 import pygame
-import board
 
 # intialize pygame
 
