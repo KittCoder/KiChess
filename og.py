@@ -15,16 +15,16 @@ SCALED_BOARD = pygame.transform.scale(BOARD, SIZE)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-PIECE_VALUES = {'wp':-1,
-                'wN':-3,
-                'wB':-3,
-                'wR':-5,
-                'wQ':-9,
-                'bp':1,
-                'bN':3,
-                'bB':3,
-                'bR':5,
-                'bQ':9,
+PIECE_VALUES = {'wp':1,
+                'wN':3,
+                'wB':3,
+                'wR':5,
+                'wQ':9,
+                'bp':-1,
+                'bN':-3,
+                'bB':-3,
+                'bR':-5,
+                'bQ':-9,
                 'wK':0,
                 'bK':0,
                 '__':0}
@@ -184,9 +184,6 @@ def is_Skip(piece, move, position):
 
     return False
 
-def getLegalMoves(board):
-    pass
-
 # define classes
 
 class State():
@@ -251,23 +248,8 @@ class State():
             for piece in row:
                 self.value += PIECE_VALUES[piece]
 
-    def makeMove(self, piece, piece_square, move_square, move):
-        global searching
-        if is_valid(piece, move, piece_square) == True and friendlyFire(piece, move_square) == False and is_Skip(piece, move, piece_square) == False:
-
-                    if self.board[move_square[0]][move_square[1]] != "__":
-                        taken_pieces[state.turn].append(self.board[move_square[0]][move_square[1]])
-                        self.value += PIECE_VALUES[self.board[move_square[0]][move_square[1]]]
-
-                    self.board[move_square[0]][move_square[1]] = piece
-                    self.board[piece_square[0]][piece_square[1]] = "__"
-
-                    if self.turn == 'w':
-                        self.turn = 'b'
-                    else:
-                        self.turn = 'w'
-                    
-                    searching = True
+    def makeMove(self, piece, move):
+        pass
 
 coordinates = getCoordinates()
 
@@ -296,16 +278,12 @@ s_square = None
 taken_pieces = {'w':[],
                 'b':[]}
 
-# run is the game loop boolean, and searching dictates whether to search for valid moves or not (to save memory)
 run = True
-searching = True
 
 while run:
     screen.fill((0, 0, 0))
     
     mouse_pos = pygame.mouse.get_pos() 
-
-    valid_moves = []
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -324,24 +302,7 @@ while run:
     for row in squares:
        
        for square in row:
-        # draws each piece
         screen.blit(square.image, square.rect.topleft)
-
-        # checks if valid moves needs to be updated, then does a very strenuous loop
-        if searching:
-            for row1 in squares:
-                for fsquare in row1:
-                    if square.position == fsquare.position:
-                        continue
-                    og_square = square.position
-                    f_square = fsquare.position
-                    move = f'{f_square[1] - og_square[1]} {f_square[0] - og_square[0]}'
-                    piece = state.board[og_square[0]][og_square[1]]
-                    if piece[0] != state.turn:
-                        continue
-                    if is_valid(piece, move, og_square) == True and friendlyFire(piece, og_square) == False and is_Skip(piece, move, og_square) == False:
-                        valid_moves.append((og_square, piece, move))
-            searching = False
 
         if selected_piece is not None:
             if square.rect.collidepoint(selected_piece):
@@ -363,18 +324,32 @@ while run:
                 s_square = square.position
                 
                 move = f'{s_square[1] - p_square[1]} {s_square[0] - p_square[0]}'
+                print(move)
 
                 # validity checked -> when the move is actually made
-                state.makeMove(piece, p_square, s_square, move)
+                if is_valid(piece, move, p_square) == True and friendlyFire(piece, s_square) == False and is_Skip(piece, move, p_square) == False:
 
-                piece = None
-                
+                    print(is_Skip(piece, move, p_square))
+
+                    if state.board[s_square[0]][s_square[1]] != "__":
+                        taken_pieces[state.turn].append(state.board[s_square[0]][s_square[1]])
+                        state.value += PIECE_VALUES[piece]
+                        print(taken_pieces)
+
+                    state.board[s_square[0]][s_square[1]] = piece
+                    state.board[p_square[0]][p_square[1]] = "__"
+
+                    if state.turn == 'w':
+                        state.turn = 'b'
+                    else:
+                        state.turn = 'w'
+                    move = None
+
                 selected_piece = None
                 selected_point = None
                 p_square = None
                 s_square = None
                 piece = None
-
     print(state.value)
 
     state.drawBoard()
