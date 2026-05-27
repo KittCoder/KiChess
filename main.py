@@ -1,4 +1,5 @@
 import pygame
+import minimax
 
 # intialize pygame
 
@@ -69,9 +70,7 @@ def makeBoard():
         
     return squares
 
-def is_valid(piece, move, position):
-
-    print(position)
+def is_valid(piece, move, position, board):
 
     move_list = move.split(" ")
 
@@ -96,7 +95,6 @@ def is_valid(piece, move, position):
         
     # for bishops/queens
     if piece[1] == 'B' or piece[1] == 'Q':
-        print('QUEEN')
         if abs(int(move_list[0])) != abs(int(move_list[1])):
             return False
         else:
@@ -108,84 +106,98 @@ def is_valid(piece, move, position):
         else:
             return False
 
-    # allows pawns to move 2 squares in their first move
-    if piece == "wp" and position[0] == 6:
-        movespieces[piece].append('0 -2')
-    elif piece == "bp" and position[0] == 1:
-        movespieces[piece].append('0 2')
+    try:
+        # allows pawns to move 2 squares in their first move
+        if piece == "wp" and position[0] == 6:
+            movespieces[piece].append('0 -2')
+        elif piece == "bp" and position[0] == 1:
+            movespieces[piece].append('0 2')
 
-    # allows pawns to take diagonally
-    if piece == "wp":
-        if state.board[position[0]-1][position[1]+1] != '__':
-            print(state.board[position[0]-2][position[1]+1])
-            movespieces[piece].append('1 -1')
-        if state.board[position[0]-1][position[1]-1] != '__':
-            print(state.board[position[0]-2][position[1]-1])
-            movespieces[piece].append('-1 -1')
+        # allows pawns to take diagonally
+        if piece == "wp":
+            if board[position[0]-1][position[1]+1] != '__':
+                movespieces[piece].append('1 -1')
+            if board[position[0]-1][position[1]-1] != '__':
+                movespieces[piece].append('-1 -1')
+        
+        if piece == "bp":
+            if board[position[0]+1][position[1]+1] != '__':
+                movespieces[piece].append('1 1')
+            if board[position[0]+1][position[1]-1] != '__':
+                movespieces[piece].append('-1 1')
+    except:
+        return False
     
-    if piece == "bp":
-        if state.board[position[0]+1][position[1]+1] != '__':
-            print(state.board[position[0]-2][position[1]+1])
-            movespieces[piece].append('1 1')
-        if state.board[position[0]+1][position[1]-1] != '__':
-            print(state.board[position[0]-2][position[1]-1])
-            movespieces[piece].append('-1 1')
-    
-    print(movespieces['wp'], move)
-
     if move is not None:
         if move in movespieces[piece]:
             return True
         else:
             return False
 
-def friendlyFire(piece, position):
-    if state.board[position[0]][position[1]] != "__":
-        if piece[0] == state.board[position[0]][position[1]][0]:
+# takes the piece in question and the destination of the piece as input
+def friendlyFire(piece, destination, board):
+    if board[destination[0]][destination[1]] != "__":
+        if piece[0] == board[destination[0]][destination[1]][0]:
             return True
     return False
 
 # checks a move's legality by seeing if it can skip over pieces, and if not, then if it does so
-def is_Skip(piece, move, position):
+def is_Skip(piece, move, position, board):
 
     skip_list = []
 
     move_list = move.split(" ")
 
-    if piece[1] == 'B':
-            x_norm = int(move_list[0])//abs(int(move_list[0]))
-            y_norm = int(move_list[1])//abs(int(move_list[1]))
-    else:
-        if int(move_list[0]) > 0:
-            x_norm = int(move_list[0])//abs(int(move_list[0]))
-            y_norm = 0
-        else:
-            y_norm = int(move_list[1])//abs(int(move_list[1]))
-            x_norm = 0
+    x = int(move_list[0])
+    y = int(move_list[1])
 
-    if piece[1] == 'B' or piece[1] == 'Q':
+    if x != 0:
+        x_norm = x//abs(x)
+    else:
+        x_norm = 0
+    
+    if y != 0:
+        y_norm = y//abs(y)
+    else:
+        y_norm = 0
+
+    # if piece[1] == 'B':
+    #         x_norm = int(move_list[0])//abs(int(move_list[0]))
+    #         y_norm = int(move_list[1])//abs(int(move_list[1]))
+    # else:
+    #     if int(move_list[0]) > 0:
+    #         x_norm = int(move_list[0])//abs(int(move_list[0]))
+    #         y_norm = 0
+    #     else:
+    #         y_norm = int(move_list[1])//abs(int(move_list[1]))
+    #         x_norm = 0
+    if piece[1] == 'Q' and 0 in (x, y):
+        rook_like = True
+    else:
+        rook_like = False
+    
+    if piece[1] == 'Q' and abs(x) == abs(y):
+        bishop_like = True
+    else:
+        bishop_like = False
+
+    if piece[1] == 'B' or bishop_like:
 
         for elt in range(abs(int(move_list[0]))):
-            square = state.board[position[0] + (elt * y_norm)][position[1] + (elt * x_norm)]
+            square = board[position[0] + (elt * y_norm)][position[1] + (elt * x_norm)]
             skip_list.append(square)
             if 0 < elt < abs(int(move_list[0])) and square != '__':
                 return True
             
-    if piece[1] == 'R' or piece[1] == 'Q':
+    if piece[1] == 'R' or rook_like:
 
         for elt in range(abs(int(move_list[0]) + int(move_list[1]))):
-            square = state.board[position[0] + (elt * y_norm)][position[1] + (elt * x_norm)]
+            square = board[position[0] + (elt * y_norm)][position[1] + (elt * x_norm)]
             skip_list.append(square)
-            print(square)
             if 0 < elt and square != '__':
                 return True
-    
-    print(skip_list)
 
     return False
-
-def getLegalMoves(board):
-    pass
 
 # define classes
 
@@ -208,6 +220,7 @@ class State():
         self.canCastle = True
         self.move_num = 0
         self.value = 0
+        self.legal_moves = []
 
     def drawBoard(self):
         for i in range(8):
@@ -252,11 +265,10 @@ class State():
                 self.value += PIECE_VALUES[piece]
 
     def makeMove(self, piece, piece_square, move_square, move):
-        global searching
-        if is_valid(piece, move, piece_square) == True and friendlyFire(piece, move_square) == False and is_Skip(piece, move, piece_square) == False:
+        if is_valid(piece, move, piece_square, self.board) == True and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
 
                     if self.board[move_square[0]][move_square[1]] != "__":
-                        taken_pieces[state.turn].append(self.board[move_square[0]][move_square[1]])
+                        taken_pieces[self.turn].append(self.board[move_square[0]][move_square[1]])
                         self.value += PIECE_VALUES[self.board[move_square[0]][move_square[1]]]
 
                     self.board[move_square[0]][move_square[1]] = piece
@@ -267,7 +279,23 @@ class State():
                     else:
                         self.turn = 'w'
                     
-                    searching = True
+    def getLegalMoves(self):
+        self.legal_moves = []
+        for row in range(8):
+            for i in range(8):
+                for row1 in range(8):
+                    for j in range(8):
+                        i_position = (row, i)
+                        j_position = (row1, j)
+                        if i_position == j_position:
+                            continue
+                        move = f'{j_position[1] - i_position[1]} {j_position[0] - i_position[0]}'
+                        piece = self.board[i_position[0]][i_position[1]]
+                        if piece[0] != self.turn:
+                            continue
+                        if is_valid(piece, move, i_position,  self.board) == True and friendlyFire(piece, j_position,  self.board) == False and is_Skip(piece, move, i_position,  self.board) == False:
+                            # the form within the list of legal moves is (position of piece, piece, legal move from position)
+                            self.legal_moves.append((i_position, piece, move))
 
 coordinates = getCoordinates()
 
@@ -292,15 +320,18 @@ selected_piece = None
 p_square = None
 selected_point = None
 s_square = None
+best_move = None
+best_value = None
+maximizing = True
 
 taken_pieces = {'w':[],
                 'b':[]}
 
-# run is the game loop boolean, and searching dictates whether to search for valid moves or not (to save memory)
+# run is the game loop boolean
 run = True
-searching = True
 
 while run:
+    
     screen.fill((0, 0, 0))
     
     mouse_pos = pygame.mouse.get_pos() 
@@ -315,7 +346,8 @@ while run:
                 selected_piece = mouse_pos
             else:
                 selected_point = mouse_pos
-                piece_img = state.board[p_square[0]][p_square[1]]
+                if p_square is not None:
+                    piece_img = state.board[p_square[0]][p_square[1]]
         #elif event.type == pygame.MOUSEBUTTONUP:
             # IF THIS BECOMES AN ERROR LATER WITH CLICKING OUTSIDE OF THE BOARD REGION: make the entire board a single sprite, 
             # and make it a condition that this only holds if collide_rect with the board sprite
@@ -328,25 +360,10 @@ while run:
         screen.blit(square.image, square.rect.topleft)
 
         # checks if valid moves needs to be updated, then does a very strenuous loop
-        if searching:
-            for row1 in squares:
-                for fsquare in row1:
-                    if square.position == fsquare.position:
-                        continue
-                    og_square = square.position
-                    f_square = fsquare.position
-                    move = f'{f_square[1] - og_square[1]} {f_square[0] - og_square[0]}'
-                    piece = state.board[og_square[0]][og_square[1]]
-                    if piece[0] != state.turn:
-                        continue
-                    if is_valid(piece, move, og_square) == True and friendlyFire(piece, og_square) == False and is_Skip(piece, move, og_square) == False:
-                        valid_moves.append((og_square, piece, move))
-            searching = False
 
         if selected_piece is not None:
             if square.rect.collidepoint(selected_piece):
                 p_square = square.position
-                print(p_square)
                 piece = str(state.board[p_square[0]][p_square[1]])
                 if piece[0] != state.turn:
                     selected_piece = None
@@ -358,14 +375,22 @@ while run:
                     p_square = None
 
         # operations involving the square that is selected to move to
-        if selected_point is not None:
+        if selected_point is not None and p_square is not None:
             if square.rect.collidepoint(selected_point):
                 s_square = square.position
-                
+
                 move = f'{s_square[1] - p_square[1]} {s_square[0] - p_square[0]}'
 
                 # validity checked -> when the move is actually made
                 state.makeMove(piece, p_square, s_square, move)
+
+                if state.turn == 'b':
+                    maximizing = False
+                else:
+                    maximizing = True
+
+                best_value = minimax.minimaxWithAB(state, 5, -100, 100, maximizing)
+                best_move = minimax.best_move
 
                 piece = None
                 
@@ -375,8 +400,8 @@ while run:
                 s_square = None
                 piece = None
 
-    print(state.value)
-
     state.drawBoard()
+
+    print(best_move, best_value)
 
     pygame.display.update()

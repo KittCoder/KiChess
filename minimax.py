@@ -1,30 +1,99 @@
 import copy
 
-def minimax(state, depth, moves, maximizing=True):
+best_move = None
+
+def minimax(state, depth,maximizing=True):
+    global best_move
     # also add something about game over
     if depth == 0:
         return state.value
     
+    state.getLegalMoves()
+
     if maximizing:
         max_num = -100
         # searches through all legal white moves
         # moves[0] is white moves, moves[1] is black moves
-        for move in range(moves[0]):
-            modified_moves = moves[0][:move] + moves[0][move+1:]
+
+        # move is indexed (piece position, piece, move)
+        for move in state.legal_moves:
+            move_row = move[0][0]+int(move[2].split(' ')[1])
+            move_column = move[0][1]+int(move[2].split(' ')[0])
+            move_square = (move_row, move_column)
             board_clone = copy.deepcopy(state)
-            board_clone.makeMove()
-            node_value = minimax(state, depth-1, modified_moves, False).value
+            board_clone.makeMove(move[1], move[0], move_square, move[2])
+            node_value = minimax(board_clone, depth-1, False)
+            if node_value > max_num:
+                best_move = move
             max_num = max(max_num, node_value)
+            
+
         return max_num
     
     else:
-        max_num = 100
+        min_num = 100
         # searches through all legal black moves
         # moves[1] is black moves
-        for move in range(moves[1]):
-            modified_moves = moves[1][:move] + moves[1][move+1:]
+        for move in state.legal_moves:
             board_clone = copy.deepcopy(state)
-            board_clone.makeMove()
-            node_value = minimax(state, depth-1, modified_moves, True).value
-            min_num = min(max_num, node_value)
+            move_row = move[0][0]+int(move[2].split(' ')[1])
+            move_column = move[0][1]+int(move[2].split(' ')[0])
+            move_square = (move_row, move_column)
+            board_clone.makeMove(move[1], move[0], move_square, move[2])
+            node_value = minimax(board_clone, depth-1, True)
+            min_num = min(min_num, node_value)
+
+        return min_num
+
+def minimaxWithAB(state, depth, alpha, beta, maximizing=True):
+    global best_move
+    # also add something about game over
+    if depth == 0:
+        return state.value
+    
+    state.getLegalMoves()
+    if maximizing:
+        max_num = -100
+        # searches through all legal white moves
+        # moves[0] is white moves, moves[1] is black moves
+
+        # move is indexed (piece position, piece, move)
+        for move in state.legal_moves:
+            move_row = move[0][0]+int(move[2].split(' ')[1])
+            move_column = move[0][1]+int(move[2].split(' ')[0])
+            move_square = (move_row, move_column)
+            board_clone = copy.deepcopy(state)
+            board_clone.makeMove(move[1], move[0], move_square, move[2])
+            node_value = minimaxWithAB(board_clone, depth-1, alpha, beta, False)
+            if node_value > max_num:
+                best_move = move
+            max_num = max(max_num, node_value)
+
+            # the alpha-beta pruning part eliminates unnecceary move computation
+            alpha = max(alpha, node_value)
+
+            if beta <= alpha:
+                break
+            
+        return max_num
+    
+    else:
+        min_num = 100
+        # searches through all legal black moves
+        # moves[1] is black moves
+        for move in state.legal_moves:
+            board_clone = copy.deepcopy(state)
+            move_row = move[0][0]+int(move[2].split(' ')[1])
+            move_column = move[0][1]+int(move[2].split(' ')[0])
+            move_square = (move_row, move_column)
+            board_clone.makeMove(move[1], move[0], move_square, move[2])
+            node_value = minimaxWithAB(board_clone, depth-1, alpha, beta, True)
+            min_num = min(min_num, node_value)
+
+            # the alpha-beta pruning part eliminates unnecceary move computation
+            beta = min(beta, node_value)
+
+            if beta <= alpha:
+                break
+
         return min_num
