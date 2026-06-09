@@ -16,16 +16,16 @@ SCALED_BOARD = pygame.transform.scale(BOARD, SIZE)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
-PIECE_VALUES = {'wp':-1,
-                'wN':-3,
-                'wB':-3,
-                'wR':-5,
-                'wQ':-9,
-                'bp':1,
-                'bN':3,
-                'bB':3,
-                'bR':5,
-                'bQ':9,
+PIECE_VALUES = {'wp':1,
+                'wN':3,
+                'wB':3,
+                'wR':5,
+                'wQ':9,
+                'bp':-1,
+                'bN':-3,
+                'bB':-3,
+                'bR':-5,
+                'bQ':-9,
                 'wK':0,
                 'bK':0,
                 '__':0}
@@ -70,8 +70,7 @@ def makeBoard():
         
     return squares
 
-def is_valid(piece, move, position, board):
-
+def isValid(piece, move, position, state):
     move_list = move.split(" ")
 
     # list of valid moves for each piece
@@ -113,18 +112,35 @@ def is_valid(piece, move, position, board):
         elif piece == "bp" and position[0] == 1:
             movespieces[piece].append('0 2')
 
-        # allows pawns to take diagonally
-        if piece == "wp":
-            if board[position[0]-1][position[1]+1] != '__':
-                movespieces[piece].append('1 -1')
-            if board[position[0]-1][position[1]-1] != '__':
-                movespieces[piece].append('-1 -1')
         
+        if piece == "wp":
+            # allows white pawns to take diagonally
+            if state.board[position[0]-1][position[1]+1] != '__':
+                movespieces[piece].append('1 -1')
+            if state.board[position[0]-1][position[1]-1] != '__':
+                movespieces[piece].append('-1 -1')
+
+            # allows white pawns to do en passant
+            if state.passant_square is not None:
+                if position[0] == state.passant_square[0] and (position[1] + 1) == state.passant_square[1]:
+                    movespieces[piece].append('1 -1')
+                if position[0] == state.passant_square[0] and (position[1] - 1) == state.passant_square[1]:
+                    movespieces[piece].append('-1 -1')
+
         if piece == "bp":
-            if board[position[0]+1][position[1]+1] != '__':
+            # allows black pawns to take diagonally
+            if state.board[position[0]+1][position[1]+1] != '__':
                 movespieces[piece].append('1 1')
-            if board[position[0]+1][position[1]-1] != '__':
+            if state.board[position[0]+1][position[1]-1] != '__':
                 movespieces[piece].append('-1 1')
+            
+            # allows black pawns to do en passant
+            if state.passant_square is not None:
+                if position[0] == state.passant_square[0] and (position[1] + 1) == state.passant_square[1]:
+                    movespieces[piece].append('1 1')
+                if position[0] == state.passant_square[0] and (position[1] - 1) == state.passant_square[1]:
+                    movespieces[piece].append('-1 1')
+
     except:
         return False
     
@@ -220,6 +236,7 @@ class State():
         self.canCastle = True
         self.move_num = 0
         self.value = 0
+        self.passant_square = None
         self.legal_moves = []
 
     def drawBoard(self):
@@ -263,9 +280,67 @@ class State():
         for row in self.board:
             for piece in row:
                 self.value += PIECE_VALUES[piece]
+    
+    def isCastle(self, piece, piece_square, move_square, move):
+        move_list = move.split(' ')
+        # checks on white's turn with according row
+        if self.turn == 'w':
+            if piece[1] == 'K' and piece_square[0] == 7:
+                if move_list[0] == '2' and self.board[7][7] == "wR" and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
+                    return True
+                if move_list[0] == '-2' and self.board[7][0] == "wR" and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
+                    return True
+                else:
+                    return False
+        
+        # checks on black's turn with according row
+        if self.turn == 'b':
+            if piece[1] == 'K' and piece_square[0] == 0:
+                if move_list[0] == '2' and self.board[0][7] == "bR" and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
+                    return True
+                if move_list[0] == '-2' and self.board[0][0] == "bR" and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
+                    return True
+                else:
+                    return False
+        return False
+
+    def makeCastle(self, piece, piece_square, move_square, move):
+        if self.isCastle(piece, piece_square, move_square, move) == True:
+            self.board[piece_square[0]][piece_square[1]] = '__'
+
+            if move[0] == '-':
+                # white queenside castle
+                if self.turn == 'w':
+                    self.board[7][2] = 'wK'
+                    self.board[7][3] = 'wR'
+                    self.board[7][0] = '__'
+                # black queenside castle
+                else:
+                    self.board[0][2] = 'bK'
+                    self.board[0][3] = 'bR'
+                    self.board[0][0] = '__'
+            else:
+                # white kingside castle
+                if self.turn == 'w':
+                    self.board[7][6] = 'wK'
+                    self.board[7][5] = 'wR'
+                    self.board[7][7] = '__'
+                # black kingside castle
+                else:
+                    self.board[0][6] = 'bK'
+                    self.board[0][5] = 'bR'
+                    self.board[0][7] = '__'
+
+            # change turns
+            if self.turn == 'w':
+                self.turn = 'b'
+            else:
+                self.turn = 'w'
+
 
     def makeMove(self, piece, piece_square, move_square, move):
-        if is_valid(piece, move, piece_square, self.board) == True and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
+
+        if isValid(piece, move, piece_square, self) == True and friendlyFire(piece, move_square, self.board) == False and is_Skip(piece, move, piece_square, self.board) == False:
 
                     if self.board[move_square[0]][move_square[1]] != "__":
                         taken_pieces[self.turn].append(self.board[move_square[0]][move_square[1]])
@@ -278,6 +353,29 @@ class State():
                         self.turn = 'b'
                     else:
                         self.turn = 'w'
+
+                    if piece[1] == 'p':
+                        if int(move.split(' ')[0]) != 0:
+                            if self.passant_square is not None:
+                                # the y-coordinate will change regardless, if the new x-coordinate equals that of the passant square, it was taken
+                                if (piece_square[1] + int(move.split(' ')[0])) == self.passant_square[1]:
+                                    self.board[self.passant_square[0]][self.passant_square[1]] = '__'
+                                    # if it was just white's turn
+                                    if self.turn == 'b':
+                                        self.value += 1
+                                    else:
+                                        self.value -= 1
+
+                        if abs(int(move.split(' ')[1])) == 2:
+                            self.passant_square = move_square
+                        else:
+                            self.passant_square = None
+                    else:
+                        self.passant_square = None
+
+        elif self.isCastle(piece, piece_square, move_square, move) == True:
+            self.makeCastle(piece, piece_square, move_square, move)
+            print("It's a castle!")
                     
     def getLegalMoves(self):
         self.legal_moves = []
@@ -293,7 +391,7 @@ class State():
                         piece = self.board[i_position[0]][i_position[1]]
                         if piece[0] != self.turn:
                             continue
-                        if is_valid(piece, move, i_position,  self.board) == True and friendlyFire(piece, j_position,  self.board) == False and is_Skip(piece, move, i_position,  self.board) == False:
+                        if isValid(piece, move, i_position,  self) == True and friendlyFire(piece, j_position,  self.board) == False and is_Skip(piece, move, i_position,  self.board) == False:
                             # the form within the list of legal moves is (position of piece, piece, legal move from position)
                             self.legal_moves.append((i_position, piece, move))
 
@@ -381,6 +479,11 @@ while run:
 
                 move = f'{s_square[1] - p_square[1]} {s_square[0] - p_square[0]}'
 
+                if isValid(piece, move, p_square, state) == True and friendlyFire(piece, s_square, state.board) == False and is_Skip(piece, move, p_square, state.board) == False:
+                    runmini = True
+                else:
+                    runmini = False
+
                 # validity checked -> when the move is actually made
                 state.makeMove(piece, p_square, s_square, move)
 
@@ -389,8 +492,13 @@ while run:
                 else:
                     maximizing = True
 
-                best_value = minimax.minimaxWithAB(state, 5, -100, 100, maximizing)
-                best_move = minimax.best_move
+                if runmini:
+                    minimaxed = minimax.minimaxWithAB(state, 3, -100, 100, [], maximizing)
+                    best_move = minimaxed[1][0]
+                    best_value = minimaxed[0]
+                runmini = False
+                
+                print(best_move, best_value)
 
                 piece = None
                 
@@ -401,7 +509,5 @@ while run:
                 piece = None
 
     state.drawBoard()
-
-    print(best_move, best_value)
 
     pygame.display.update()
